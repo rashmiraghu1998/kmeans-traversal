@@ -7,7 +7,7 @@ async def sspir(pid, queue, P1_points, P2_points, P3_points, P2_kd_tree, P3_kd_t
 
     # Step 1: Party 1 (P1) handles secret sharing and XOR sharing of Q
     if pid == "P1":
-        # Secret share the index 'i' between 3 parties: P0 (P1), P1, and P2
+        # Secret share the index 'i' between 3 parties: P1, P2, and P3
         i_secret = cryptographicProtocols.secret_share(i, 2, 2)  # This should give us shares of 'i' between P1, P2, and P3
         print("Secret: " + str(i_secret))  # Print the shares of 'i' for debugging
 
@@ -18,7 +18,9 @@ async def sspir(pid, queue, P1_points, P2_points, P3_points, P2_kd_tree, P3_kd_t
         Q[x1] = 1  # Set Q[x1] = 1, where x1 is the index of the secret
 
         # XOR share the bit-array Q between P1 and P2
-        Q_xor_share = cryptographicProtocols.secret_share(Q, 2, 2)  # P1 and P2 receive XOR shares of Q
+        # UPDATE: Do not do XOR secret share. Instead , just give Q to P2 and P3
+        # Q_xor_share = cryptographicProtocols.secret_share(Q, 2, 2)  # P3 and P2 receive XOR shares of Q
+        Q_xor_share = [Q,Q]
         print("XOR Q array: " + str(Q_xor_share))
 
         # Send shares of Q to P2 and P3
@@ -60,8 +62,8 @@ async def sspir(pid, queue, P1_points, P2_points, P3_points, P2_kd_tree, P3_kd_t
         v_P2 = [P2_kd_tree[j] * W[j] for j in range(len(P2_kd_tree))]  # Multiply the KD-tree values with W
         print("Computed V_P2: " + str(v_P2))
 
-        # Send the result back to P1
-        await p.give("v_P2", v_P2)
+        # Send the result back to P1. Do not!! We will use P2 as a participant.
+        # await p.give("v_P2", v_P2)
 
     # Step 3: Party 3 (P3) handles permuting Q and computing v_P3
     if pid == "P3":
@@ -78,8 +80,8 @@ async def sspir(pid, queue, P1_points, P2_points, P3_points, P2_kd_tree, P3_kd_t
         v_P3 = [P3_kd_tree[j] * W[j] for j in range(len(P3_kd_tree))]  # Multiply the KD-tree values with W
         print("Computed V_P3: " + str(v_P3))
 
-        # Send the result back to P1
-        await p.give("v_P3", v_P3)
+        # Send the result back to P1 : Do not!! We will use P3 as a participant.
+        # await p.give("v_P3", v_P3)
 
 async def main():
     futures = []
