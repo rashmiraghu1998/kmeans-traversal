@@ -30,22 +30,22 @@ async def sspir(pid, queue, P1_points, P2_points, P3_points, P2_kd_tree, P3_kd_t
         # Send the secret share to P2 and P3 (for index i)
         await p.give("i_P2", i_secret[0][1])  # P2 receives its share of the index
         await p.give("i_P3", i_secret[0][1])  # P3 receives its share of the index
+        #
+        # # Receive the results from P2 and P3 (v_P2 and v_P3)
+        # v_P2 = await p.get("v_P2")
+        # v_P3 = await p.get("v_P3")
+        #
+        # print("P2's result: " + str(v_P2))
+        # print("P3's result: " + str(v_P3))
+        #
+        # # Combine the results from P2 and P3 (add them together)
+        # v = [v_P3[j] + v_P2[j] for j in range(len(v_P3))]
+        # print("Combined v: " + str(v))
 
-        # Receive the results from P2 and P3 (v_P2 and v_P3)
-        v_P2 = await p.get("v_P2")
-        v_P3 = await p.get("v_P3")
-
-        print("P2's result: " + str(v_P2))
-        print("P3's result: " + str(v_P3))
-
-        # Combine the results from P2 and P3 (add them together)
-        v = [v_P3[j] + v_P2[j] for j in range(len(v_P3))]
-        print("Combined v: " + str(v))
-
-        # Return the final result based on the secret share and index i
-        result = v[(i_secret[0][1] + i) % 2]  # Select the correct result based on the index 'i' and secret share
-        print("Final result: " + str(result))
-        return result
+        # # Return the final result based on the secret share and index i
+        # result = v[(i_secret[0][1] + i) % 2]  # Select the correct result based on the index 'i' and secret share
+        # print("Final result: " + str(result))
+        # return result
 
     # Step 2: Party 2 (P2) handles permuting Q and computing v_P2
     if pid == "P2":
