@@ -1,27 +1,33 @@
 import random
 import numpy
-def secret_share(items, parties, q):
+def secret_share(items, parties):
     elements=[]
     if type(items)==int:
         elements.extend([items])
     else:
         elements.extend(items)
-    print(elements)
-    secretShares=[0]*len(elements)
+    print("Elements"+str(elements))
+    secretShares=[]
 
     for i in range(len(elements)):
-        shareFori=[]
-        for j in range(parties):
-            if j is not parties-1:
-                value = random.choice(range(q))
-                shareFori.append(value)
-            else:
-                shareFori.append(abs(elements[i]-sum(shareFori)%q))
-        secretShares[i]=shareFori
-    if len(elements)==1:
+        binary = bin(elements[i])
+        # print(binary)
+        shares = []
+        for j in range(parties-1):
+            shares.append("".join([str(random.choice([0,1])) for k in range(len(binary)-2)]))
+        # print(shares)
+        m = list(binary[2:])
+        for i in range(2, len(binary)):
+            value = int(binary[i])
+            for j in range(parties-1):
+                value+= int(shares[j][i-2])
+            m[i-2]=str(value%2)
+        shares.append(str("".join(m)))
+        secretShares.append(shares)
+
+    if(len(secretShares)==1):
         return secretShares
-    else:
-        return list(zip(*secretShares))
+    return list(zip(*secretShares))
 
 
 
