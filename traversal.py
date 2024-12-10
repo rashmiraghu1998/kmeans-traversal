@@ -21,7 +21,7 @@ async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_t
         m = len(P2_kd_tree)  # Assuming P2_kd_tree has length m
         Q = [0] * m
 
-        Q[int(i_secret[0][0],2)] = 1  # Set Q[x1] = 1
+        Q[int(i_secret[0][0],2)%len(Q)] = 1  # Set Q[x1] = 1
 
         # XOR share the bit-array Q between P1 and P2
         Q_xor_share = cryptographicProtocols.secret_share(Q, 2)  # P2 and P1 receive XOR shares of Q
@@ -51,7 +51,13 @@ async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_t
 
         # Compute the values v_P2 based on the KD-tree values and W
         v_P1 = []
-        v_P1.append([int(bin_P1_kd_tree[j] * W[j],2) for j in range(len(bin_P1_kd_tree))])  # Multiply the KD-tree values with W
+        # v_P2 is wrong. Need to xor.
+        # Multiply the KD-tree values with W
+        for j in range(len(bin_P1_kd_tree)):
+            k = 0
+            for i in bin_P1_kd_tree:
+                k = k^((int(i) * int(W[j])))
+            v_P1.append(k)
         print("Computed V_P1: " + str(v_P1))
 
     # Step 3: Party 2 (P2) handles permuting Q and computing v_P3
@@ -72,7 +78,14 @@ async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_t
         # Compute the values v_P2 based on the KD-tree values and W
         v_P2 = []
         # v_P2 is wrong. Need to xor.
-        v_P2.append([int(int(bin_P2_kd_tree[j])[i] * W[j],2) for j in range(len(bin_P2_kd_tree))])  # Multiply the KD-tree values with W
+        # Multiply the KD-tree values with W
+        print(bin_P2_kd_tree)
+        for j in range(len(bin_P2_kd_tree)):
+            k=0
+            for i in bin_P2_kd_tree:
+                k=k^((int(i)*int(W[j])))
+            v_P2.append(k)
+
         print("Computed V_P2: " + str(v_P2))
 
 async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, index):
@@ -107,7 +120,7 @@ async def main():
     P2_kd_tree = [1, 1, 3, 2, 2, 3, 4]
     P2_points = [0,1,2]
     # first index i is 0 and known to everyone.
-    i=3
+    i=4
     queue = asyncio.Queue()
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -117,7 +130,7 @@ async def main():
         P1 and P2 have secret shares of the kd-tree.
         """
         for parties in ["P0", "P1", "P2"]:
-            futures.append(await loop.run_in_executor(executor, traversal, parties, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, 3))
+            futures.append(await loop.run_in_executor(executor, traversal, parties, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, 4))
         [await f for f in asyncio.as_completed(futures)]
 
 
