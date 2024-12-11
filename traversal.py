@@ -53,27 +53,11 @@ async def OT_output(pid, p, x_0, x_1, selector):
 
         try:
             d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
+            return [ct0,d0]
             print(d0)
         except:
             d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
-            print(d1)
-
-        B = (b * A)
-        await p.give("B", B)
-        keyr = b * A
-
-        keyr_bytes = sha512(keyr.canonical().to_base64().encode()).digest()[:32]
-        # print(keyr, keyr.canonical().to_base64().encode(), keyr_bytes)
-        ct0 = await p.get("ct0")
-        ct1 = await p.get("ct1")
-
-        try:
-            d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
-            return ct0
-            print(d0)
-        except:
-            d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
-            return ct1
+            return [ct1,d1]
             print(d1)
 
     if(pid == "P2"):
@@ -83,7 +67,6 @@ async def OT_output(pid, p, x_0, x_1, selector):
 
 async def OT_input(pid, p, x_0, x_1, value):
     point_1 = oblivious.ristretto.point.hash('abc'.encode())
-
 
     if(pid == "P1"):
         encoded_x0 = x_0.encode()
@@ -104,7 +87,6 @@ async def OT_input(pid, p, x_0, x_1, value):
         ct1 = symmetric.encrypt(secret(key1_bytes), encoded_x1)
         await p.give("ct0", ct0)
         await p.give("ct1", ct1)
-
 
     if(pid == "P2"):
         b = scalar.from_int(0)
@@ -261,8 +243,41 @@ async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_
     cipherTestForOne = await OT_input(pid, p, "0", "1", 1)
     print(cipherTestForOne)
 
-    # Step 4: Perform OT between P1 and P0 to get encrypted output to get the value of b.
-    await OT_output(pid, p, "01010", "10101", "1010101")
+    if pid == "P0":
+        
+        # Step 4: Perform OT between P1 and P0 to get encrypted output to get the value of b.
+        cipherForOutput,output = await OT_output(pid, p, "01010", "10101", "1010101")
+        # Step 5: Update new index.
+        if output == 0:
+            index = index+1
+        else:
+            index = index+2
+        # Step 6: Index vector
+        if index > len(P2_kd_tree)//2:
+            cp = [0]*(len(P2_kd_tree))
+            cp[index] = 1
+            cp_secret = cryptographicProtocols.secret_share(cp, 2)
+            await p.give("cp_1", cp_secret[0])
+            await p.give("cp_2", cp_secret[1])
+
+    # Step 7: Use the index vectors for updates later.
+    if pid == "P1":
+        cp = await p.get("cp_1")
+    if pid == "P2":
+        cp = await p.get("cp_2")
+
+
+
+
+
+
+
+
+
+    
+    
+    
+    
 
 
 
