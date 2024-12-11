@@ -30,6 +30,19 @@ def secret_share(items, parties):
     return list(zip(*secretShares))
 
 
+def xor(a,b):
+    print("".join(['0']*(len(str(a))-len(str(b)))))
+    a_new = a
+    b_new = b
+    if(len(str(a)) > len(str(b))):
+        a_new = "".join(['0']*(len(str(a))-len(str(b))))+""+"".join(list(a))
+        b_new = b
+    elif(len(str(a)) < len(str(b))):
+        a_new = a
+        b_new = "".join(['0']*(len(str(b))-len(str(a))))+""+"".join(list(b))
+
+    return "".join([str(int(str(a_new)[i])^int(str(b_new)[i])) for i in range((len(str(a_new))))])
+
 
 
 
