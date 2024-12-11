@@ -1,9 +1,87 @@
 import concurrent
 import copy
 
+import oblivious
+from oblivious.ristretto import point, scalar
+from bcl import symmetric, secret
+from hashlib import sha512
 from utils import utils
 import asyncio
 from utils import cryptographicProtocols
+
+
+async def OT_input(pid, p, x_0, x_1, value):
+    point_1 = oblivious.ristretto.point.hash('abc'.encode())
+    # print("Here"+ pid)
+    #
+    # if(pid == "P0"):
+    #     pass
+
+    if(pid == "P1"):
+        encoded_x0 = x_0.encode()
+        encoded_x1 = x_1.encode()
+        a = scalar()
+        # print(a)
+        A = a * point_1
+        # print(A)
+        await p.give("A", A)
+        B = await p.get("B")
+
+        key0 = a * B
+        key1 = a * (B - A)
+
+        key0_bytes = sha512(key0.canonical().to_base64().encode()).digest()[:32]
+        key1_bytes = sha512(key1.canonical().to_base64().encode()).digest()[:32]
+        ct0 = symmetric.encrypt(secret(key0_bytes), encoded_x0)
+        ct1 = symmetric.encrypt(secret(key1_bytes), encoded_x1)
+        await p.give("ct0", ct0)
+        await p.give("ct1", ct1)
+
+
+    if(pid == "P2"):
+        b = scalar.from_int(0)
+        # print(b)
+        A = await p.get("A")
+        if(value==0):
+            B = (b * A)
+        else:
+            B = A + (b * A)
+        await p.give("B", B)
+        keyr = b * A
+
+        keyr_bytes = sha512(keyr.canonical().to_base64().encode()).digest()[:32]
+        # print(keyr, keyr.canonical().to_base64().encode(), keyr_bytes)
+        ct0 = await p.get("ct0")
+        ct1 = await p.get("ct1")
+
+        try:
+            d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
+            print(d0)
+        except:
+            d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
+            print(d1)
+
+        B = (b * A)
+        await p.give("B", B)
+        keyr = b * A
+
+        keyr_bytes = sha512(keyr.canonical().to_base64().encode()).digest()[:32]
+        # print(keyr, keyr.canonical().to_base64().encode(), keyr_bytes)
+        ct0 = await p.get("ct0")
+        ct1 = await p.get("ct1")
+
+        try:
+            d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
+            return ct0
+            print(d0)
+        except:
+            d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
+            return ct1
+            print(d1)
+
+
+
+
 
 async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, index):
 
@@ -90,7 +168,7 @@ async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_t
 
 async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, index):
     p = utils.Message(queue)
-
+    print(pid)
     # Convert P1 and P2 points into binary.
     bin_P1_points = []
     for i in P1_points:
@@ -107,8 +185,26 @@ async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_
             bin_P1_points[i]= bin(int(bin_P1_points[i], 2) + int(secret_datapoints[0][i],2))[2:]
             bin_P2_points[i]= bin(int(bin_P2_points[i], 2) + int(secret_datapoints[1][i],2))[2:]
 
+
+
+
     # Step 2: Party 0 , Party 1 and Party 2 perform SSPIR to get kd_tree[i]
     await sspir(pid, queue, P0_points, bin_P1_points, bin_P2_points, P1_kd_tree, P2_kd_tree, index)
+    # Step 3: Perform OT between P2 and P1 to get all cipher texts.
+    cipherTestForZero = await OT_input(pid, p, "0", "1", 0)
+    print(cipherTestForZero)
+    cipherTestForOne = await OT_input(pid, p, "0", "1", 1)
+    print(cipherTestForOne)
+
+
+
+
+
+
+
+
+
+
 
 async def main():
     futures = []
