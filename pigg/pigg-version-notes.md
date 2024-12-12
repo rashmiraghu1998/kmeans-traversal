@@ -1,0 +1,8 @@
+* This initial release includes the complete PIGG library for two-party MPC protocols.
+* The core PIGG library API includes functionalities that can be chained together to create a complete, end-to-end garbled circuit protocol solution: garbling, evaluation, oblivious transfer, and symmetric encryption.
+* PIGG is compatible with [libsodium](https://github.com/jedisct1/libsodium) and can use the [canaries](https://pypi.org/project/canaries/) package to load CIGG shared/dynamic-link library files (corresponding to [CIGG release 0.1.0](https://github.com/nthparty/cigg/releases/tag/0.1.0) for this release of PIGG) compiled for Linux, macOS, and Windows.
+* PIGG comes with a number of additional tools found in the `tool` directory, including:
+  * a tool that utilizes the [circuitry](https://pypi.org/project/circuitry/) package to build circuits for arithmetic and logical operations, certain hash functions such as SHA-256, and certain cryptographic primitives such as AES-128 in ECB mode;
+  * a tool that can generate compressed circuit definitions for embedding inside Python modules and CIGG shared/dynamic-link library files; and
+  * a tool that uses the [monoliths](https://pypi.org/project/monoliths/) package to generate stand-alone Python modules that deliver all or some of the PIGG functionalities, including the specialized HUGG server and client modules (corresponding to [HUGG release 0.1.0](https://github.com/nthparty/hugg-datavant/releases/tag/0.1.0) for this release of PIGG).
+* Documentation for this release consists of the README file in the root directory and comments in individual module files.

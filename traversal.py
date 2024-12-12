@@ -8,7 +8,11 @@ from hashlib import sha512
 from utils import utils
 import asyncio
 from utils import cryptographicProtocols
+import sys
+from pigg.pigg.data.circuits import *
+from pigg.pigg.core.garble import *
 
+sys.path.append("../pigg") # To ensure import statements below work.
 
 async def OT_output(pid, p, x_0, x_1, selector):
     point_1 = oblivious.ristretto.point.hash('abc'.encode())
@@ -54,24 +58,21 @@ async def OT_output(pid, p, x_0, x_1, selector):
         try:
             d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
             return [ct0,d0]
-            print(d0)
+            # print(d0)
         except:
             d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
             return [ct1,d1]
-            print(d1)
+            # print(d1)
 
     if(pid == "P2"):
         pass
 
 
-
 async def OT_input(pid, p, x_0, x_1, value):
-    point_1 = oblivious.ristretto.point.hash('abc'.encode())
+    point_1 = oblivious.ristretto.point.base(scalar.from_int(1))
 
     if(pid == "P1"):
-        encoded_x0 = x_0.encode()
-        encoded_x1 = x_1.encode()
-        a = scalar()
+        a = scalar.hash("little a".encode())
         # print(a)
         A = a * point_1
         # print(A)
@@ -83,54 +84,72 @@ async def OT_input(pid, p, x_0, x_1, value):
 
         key0_bytes = sha512(key0.canonical().to_base64().encode()).digest()[:32]
         key1_bytes = sha512(key1.canonical().to_base64().encode()).digest()[:32]
-        ct0 = symmetric.encrypt(secret(key0_bytes), encoded_x0)
-        ct1 = symmetric.encrypt(secret(key1_bytes), encoded_x1)
+        ct0 = symmetric.encrypt(secret(key0_bytes), str(x_0).encode())
+        ct1 = symmetric.encrypt(secret(key1_bytes), str(x_1).encode())
+
         await p.give("ct0", ct0)
         await p.give("ct1", ct1)
 
     if(pid == "P2"):
-        b = scalar.from_int(0)
+        b = scalar.hash("little bee".encode())
         # print(b)
         A = await p.get("A")
         if(value==0):
-            B = (b * A)
+            B = (b * point_1)
         else:
-            B = A + (b * A)
+            B = A + (b * point_1)
         await p.give("B", B)
-        keyr = b * A
 
-        keyr_bytes = sha512(keyr.canonical().to_base64().encode()).digest()[:32]
         # print(keyr, keyr.canonical().to_base64().encode(), keyr_bytes)
         ct0 = await p.get("ct0")
         ct1 = await p.get("ct1")
-
-        try:
-            d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
-            print(d0)
-        except:
-            d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
-            print(d1)
-
-        B = (b * A)
-        await p.give("B", B)
         keyr = b * A
-
         keyr_bytes = sha512(keyr.canonical().to_base64().encode()).digest()[:32]
-        # print(keyr, keyr.canonical().to_base64().encode(), keyr_bytes)
-        ct0 = await p.get("ct0")
-        ct1 = await p.get("ct1")
-
+        print(keyr, keyr.canonical().to_base64().encode(), keyr_bytes)
         try:
             d0 = symmetric.decrypt(secret(keyr_bytes), ct0)
-            return ct0
+            return d0
             print(d0)
         except:
             d1 = symmetric.decrypt(secret(keyr_bytes), ct1)
-            return ct1
+            return d1
             print(d1)
+            pass
 
 
+async def lessThanGarbledCircuit(pid, p, kd_val_P1, kd_val_P2, point_1, point_2):
+    circuit_name = "compare-lteq-32-bit-unsigned-old"
+    print("  * testing \"" + circuit_name + "\"...", end="")
+    c = circuits.load(circuit_name)
 
+
+    # Step 2: Create labels for P1's inputs. Create labels for P2's input.
+    if pid == "P1":
+        # Step 1: Create labels to the wire and garble - P1
+        wire_to_labels_g = garble.generate_wire_to_labels_map(c)
+        gates_garbled_g = garble.garble_gates(c, wire_to_labels_g)
+
+        # Step 2: Create labels for P1's inputs
+        wire_to_labels_P1 = garble.wire_in_to_label(wire_to_labels_g, list(str(kd_val_P1)))
+        await p.give("wire_to_labels_g", wire_to_labels_g)
+        await p.give("wire_to_labels_P1", wire_to_labels_P1)
+        await p.give("gates_garbled_g", gates_garbled_g)
+        for i in range(len(str(kd_val_P2))):
+            await OT_input(pid, p, wire_to_labels_g[i][0], wire_to_labels_g[i][1], str(kd_val_P2)[i])
+
+    if pid == "P2":
+        # Step 3: Compute input labels.
+        input_labels = []
+        wire_to_labels_g = await p.get("wire_to_labels_g")
+        for i in range(len(str(kd_val_P2))):
+            input_label = await OT_input(pid, p, wire_to_labels_g[i][0], wire_to_labels_g[i][1], str(kd_val_P2)[i])
+            input_labels.append(input_label)
+        await p.give("wire_to_labels_P2", input_labels)
+
+
+    if pid == "P0":
+        wire_to_labels_P1 = await p.get("wire_to_labels_P1")
+        wire_to_labels_P2 = await p.get("wire_to_labels_P2")
 
 
 async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, index):
@@ -186,6 +205,7 @@ async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_t
             for i in bin_P1_kd_tree:
                 k = k^((int(i) * int(W[j])))
             v_P1.append(k)
+        await p.give("v_P1", v_P1[index%len(P1_kd_tree)])
         print("Computed V_P1: " + str(v_P1))
 
     # Step 3: Party 2 (P2) handles permuting Q and computing v_P3
@@ -213,7 +233,7 @@ async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_t
             for i in bin_P2_kd_tree:
                 k=k^((int(i)*int(W[j])))
             v_P2.append(k)
-
+        await p.give("v_P2", v_P2[index%len(P2_kd_tree)])
         print("Computed V_P2: " + str(v_P2))
 
 async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, index):
@@ -227,6 +247,9 @@ async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_
     for i in P2_points:
         bin_P2_points.append(bin(i)[2:])
 
+    await p.give("bin_P1_points", bin_P1_points)
+    await p.give("bin_P2_points", bin_P2_points)
+
     # Step 1: Party 0 secret shares the datapoints with P1 and P2
     if pid == "P0":
         secret_datapoints = cryptographicProtocols.secret_share(P0_points, 2)
@@ -238,10 +261,17 @@ async def traversal(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_
     # Step 2: Party 0 , Party 1 and Party 2 perform SSPIR to get kd_tree[i]
     await sspir(pid, queue, P0_points, bin_P1_points, bin_P2_points, P1_kd_tree, P2_kd_tree, index)
     # Step 3: Perform OT between P2 and P1 to get all cipher texts.
-    cipherTestForZero = await OT_input(pid, p, "0", "1", 0)
-    print(cipherTestForZero)
-    cipherTestForOne = await OT_input(pid, p, "0", "1", 1)
-    print(cipherTestForOne)
+    # cipherTestForZero = await OT_input(pid, p, "0", "1", 0)
+    # print(cipherTestForZero)
+    # cipherTestForOne = await OT_input(pid, p, "0", "1", 1)
+    # print(cipherTestForOne)
+
+    kd_point_p1 = await p.get("v_P1")
+    kd_point_p2 = await p.get("v_P2")
+
+    await lessThanGarbledCircuit(pid, p, kd_point_p1, kd_point_p2, bin_P1_points[0], bin_P2_points[0])
+
+
 
     if pid == "P0":
         
