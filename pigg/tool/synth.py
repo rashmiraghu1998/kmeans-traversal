@@ -330,3 +330,16 @@ if __name__ == '__main__':
             int_to_bits(4, l),
             int_to_bits(1, 1)
         )
+
+        # lteq-
+    for l in [int(arg[5:]) for arg in sys.argv if arg.startswith("lteq-")]:
+        synthesize_emit_test_arith_ss(
+            feedback, emit_file_and_check,
+            "../circuit/bristol/compare-lteqss-{}-bit.txt".format(l),
+            sslteq32, signature([l, l, l, l], [1]),
+            int_to_bits(5, l) + \
+            int_to_bits(5, l) + \
+            int_to_bits(5, l) + \
+            int_to_bits(4, l),
+            int_to_bits(0, 1)
+        )

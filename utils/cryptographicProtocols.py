@@ -6,7 +6,7 @@ def secret_share(items, parties):
         elements.extend([items])
     else:
         elements.extend(items)
-    print("Elements"+str(elements))
+    # print("Elements"+str(elements))
     secretShares=[]
 
     for i in range(len(elements)):

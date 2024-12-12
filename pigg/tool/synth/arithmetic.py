@@ -158,11 +158,20 @@ def mod(xs, ys, l):
 def lteqb(xs, ys, l):
     return sub(xs, ys, l, preserve_overflow_bit=True)[0]
 
+def sslt32(us, ws, xs, ys):
+    as_ = add(us, ws, 32, preserve_overflow_bit=False)
+    bs = add(xs, ys, 32, preserve_overflow_bit=False)
+    return sub(as_, bs, 32, preserve_overflow_bit=True)[0]
+
 def gteqb(xs, ys, l):
     return ~lteqb(xs, ys, l)
 
 def lteq(xs, ys, l):
     return [lteqb(xs, ys, l)]  # because the output must be a bit array
+
+def sslteq(us, ws, xs, ys, l):
+    return [sslt32(us, ws, xs, ys)]  # because the output must be a bit array
+
 
 def gteq(xs, ys, l):
     return [gteqb(xs, ys, l)]  # because the output must be a bit array
@@ -224,6 +233,9 @@ def mod8(xs, ys): return mod(xs, ys, 8)
 def mod32(xs, ys): return mod(xs, ys, 32)
 
 def lteq32(xs, ys): return lteq(xs, ys, 32)
+
+def sslteq32(us, ws, xs, ys): return sslteq(us, ws, xs, ys, 32)
+
 def gteq32(xs, ys): return gteq(xs, ys, 32)
 
 def min32(xs, ys): return min(xs, ys, 32)
@@ -245,6 +257,32 @@ def synthesize_emit_test_arith(
     (xl, yl, zl) = sig.input_format + sig.output_format
     (xs, ys) = (bits([input_one(i) for i in input_test[0:xl]]), bits([input_two(i) for i in input_test[xl:xl+yl]]) )
     zs = function(xs, ys, l=xl)
+    output_test = [int(output(b)) for b in zs]
+    circ = bit.circuit()
+    print("Synthesized `" + name + "` with " + str(len(circ.gate)) + " gates:")
+    print(' * operation counts: ', {
+        o.name(): circ.count(lambda g: g.operation == o)
+        for o in [op.not_, op.and_, op.xor_, op.or_, op.nand_, op.nif_, op.id_, op.xnor_, op.nimp_]
+    })
+    feedback(name, "direct evaluation during synthesis", output_test, output_target)
+    feedback(
+        name, "data structure evaluated on input",
+        circ.evaluate(input_test), output_target
+    )
+    circ.signature = sig
+    emit_file_and_check(path, circ, input_test, output_target)
+
+def synthesize_emit_test_arith_ss(
+        feedback, emit_file_and_check,
+        path, function, sig, input_test, output_target
+):
+    name = path.split("/")[-1]
+    print()
+    bit.circuit(circuit())
+    (ul, wl, xl, yl, zl) = sig.input_format + sig.output_format
+    (us, ws, xs, ys) = (bits([input_one(i) for i in input_test[0:ul]]), bits([input_two(i) for i in input_test[ul:ul+wl]]) ,
+                        bits([input_one(i) for i in input_test[ul+wl:ul+wl+xl]]), bits([input_two(i) for i in input_test[ul+wl+xl:ul+wl+xl+yl]]) )
+    zs = function(us, ws, xs, ys)
     output_test = [int(output(b)) for b in zs]
     circ = bit.circuit()
     print("Synthesized `" + name + "` with " + str(len(circ.gate)) + " gates:")

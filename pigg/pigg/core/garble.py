@@ -105,11 +105,7 @@ class garble():
             #
             #     wire_to_labels[z_wire] = [z_label_0, z_label_1]
 
-            else:
-                raise ValueError(
-                    'operation "' + circuit.gate[i].operation.name() +\
-                    '" not supported in wire label generation'
-                )
+
 
         return wire_to_labels
 
@@ -164,11 +160,7 @@ class garble():
                 gate, wire_to_labels, gate_id,
                 gate.operation # Operator outputs as a tuple for 00,01,10,11.
             )
-        else:
-            raise ValueError(
-                'operation "' + gate.operation.name() +\
-                '" not supported in gate garbling'
-            )
+
 
     @staticmethod
     def garble_gates(circuit, wire_to_labels):
