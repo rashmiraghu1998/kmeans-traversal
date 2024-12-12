@@ -122,7 +122,6 @@ async def lessThanGarbledCircuit(pid, p, kd_val_P1, kd_val_P2, point_1, point_2)
     print("  * testing \"" + circuit_name + "\"...", end="")
     c = circuits.load(circuit_name)
 
-
     # Step 2: Create labels for P1's inputs. Create labels for P2's input.
     if pid == "P1":
         # Step 1: Create labels to the wire and garble - P1
@@ -131,9 +130,14 @@ async def lessThanGarbledCircuit(pid, p, kd_val_P1, kd_val_P2, point_1, point_2)
 
         # Step 2: Create labels for P1's inputs
         wire_to_labels_P1 = garble.wire_in_to_label(wire_to_labels_g, list(str(kd_val_P1)))
+        wire_to_labels_P1_2 = garble.wire_in_to_label(wire_to_labels_g, list(str(point_1)))
+
         await p.give("wire_to_labels_g", wire_to_labels_g)
         await p.give("wire_to_labels_P1", wire_to_labels_P1)
+        await p.give("wire_to_labels_P1_2", wire_to_labels_P1_2)
         await p.give("gates_garbled_g", gates_garbled_g)
+        for i in range(len(str(kd_val_P2))):
+            await OT_input(pid, p, wire_to_labels_g[i][0], wire_to_labels_g[i][1], str(kd_val_P2)[i])
         for i in range(len(str(kd_val_P2))):
             await OT_input(pid, p, wire_to_labels_g[i][0], wire_to_labels_g[i][1], str(kd_val_P2)[i])
 
@@ -144,12 +148,24 @@ async def lessThanGarbledCircuit(pid, p, kd_val_P1, kd_val_P2, point_1, point_2)
         for i in range(len(str(kd_val_P2))):
             input_label = await OT_input(pid, p, wire_to_labels_g[i][0], wire_to_labels_g[i][1], str(kd_val_P2)[i])
             input_labels.append(input_label)
+        input_labels_points = []
+        for i in range(len(str(kd_val_P2))):
+            input_label = await OT_input(pid, p, wire_to_labels_g[i][0], wire_to_labels_g[i][1], str(kd_val_P2)[i])
+            input_labels_points.append(input_label)
         await p.give("wire_to_labels_P2", input_labels)
-
+        await p.give("wire_to_labels_P2_2", input_labels_points)
 
     if pid == "P0":
         wire_to_labels_P1 = await p.get("wire_to_labels_P1")
         wire_to_labels_P2 = await p.get("wire_to_labels_P2")
+        wire_to_labels_P1_2 = await p.get("wire_to_labels_P1_2")
+        wire_to_labels_P2_2 = await p.get("wire_to_labels_P2_2")
+
+
+
+
+
+
 
 
 async def sspir(pid, queue, P0_points, P1_points, P2_points, P1_kd_tree, P2_kd_tree, index):
